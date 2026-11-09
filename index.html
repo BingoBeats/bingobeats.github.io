@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Beat Bingo</title>
+<style>
+  body{margin:0;background:#0b0618;color:#fff;font-family:Arial,Helvetica,sans-serif;text-align:center}
+  h1{margin:16px 0 4px;color:#ff2fd6;text-shadow:0 0 12px #ff2fd6}
+  .sub{color:#35f0ff;margin-bottom:12px;font-size:14px}
+  #join{padding:30px 16px}
+  input{font-size:22px;padding:10px;border-radius:10px;border:2px solid #35f0ff;background:#150b2e;color:#fff;text-transform:uppercase;text-align:center;width:70%}
+  button{font-size:20px;padding:12px 22px;border:0;border-radius:12px;margin-top:14px;background:#ff2fd6;color:#fff;font-weight:bold}
+  #board{display:none;padding:8px}
+  .grid{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;max-width:520px;margin:0 auto}
+  .cell{background:#150b2e;border:2px solid #7a3cff;border-radius:8px;min-height:74px;display:flex;align-items:center;justify-content:center;padding:3px;font-size:11px;line-height:1.15;user-select:none}
+  .cell.on{background:#ffe600;color:#1a0b3a;border-color:#fff;font-weight:bold}
+  .cell.free{background:#35f0ff;color:#0b0618;font-weight:bold}
+  #mingo{background:#35f0ff;color:#0b0618;width:90%;max-width:520px;margin-top:14px}
+  #flash{display:none;position:fixed;inset:0;background:#ff2fd6;color:#fff;font-size:60px;font-weight:bold;flex-direction:column;align-items:center;justify-content:center}
+  .small{font-size:12px;color:#aaa;margin-top:10px}
+</style>
+</head>
+<body>
+<h1>BEAT BINGO</h1>
+<div class="sub">by Authentic Sound</div>
+
+<div id="join">
+  <p>Enter your game code</p>
+  <input id="code" maxlength="12" placeholder="CODE">
+  <br><button onclick="joinGame()">JOIN GAME</button>
+  <p id="err" style="color:#ff6b6b"></p>
+</div>
+
+<div id="board">
+  <div class="grid" id="grid"></div>
+  <button id="mingo" onclick="callMingo()">I HAVE BINGO!</button>
+  <div class="small">Tap a square when you hear the song. Tap again to undo.</div>
+  <button onclick="newCard()" style="background:#333;font-size:14px">New card</button>
+</div>
+
+<div id="flash" onclick="this.style.display='none'">
+  <div>BINGO!</div>
+  <div style="font-size:22px;margin-top:16px">Show the host this screen</div>
+  <div style="font-size:14px;margin-top:20px">(tap to close)</div>
+</div>
+
+<script>
+// ====== EDIT HERE: one song list per game code (need at least 24 songs each) ======
+const GAMES = {
+  "ROOM7": [
+    "Flowers - Miley Cyrus","Anti-Hero - Taylor Swift","As It Was - Harry Styles","Espresso - Sabrina Carpenter","Levitating - Dua Lipa","Blinding Lights - The Weeknd","Shape of You - Ed Sheeran","Good 4 U - Olivia Rodrigo","Houdini - Dua Lipa","Cruel Summer - Taylor Swift","Watermelon Sugar - Harry Styles","Uptown Funk - Bruno Mars",
+    "Rolling in the Deep - Adele","Hello - Adele","Don't Know Why - Norah Jones","Haven't Met You Yet - Michael Bublé","Feeling Good - Michael Bublé","Valerie - Amy Winehouse","Say You Won't Let Go - James Arthur","Stay With Me - Sam Smith","Perfect - Ed Sheeran","Skinny Love - Birdy",
+    "Fly Me to the Moon - Frank Sinatra","Dream a Little Dream of Me - Ella Fitzgerald","Unforgettable - Nat King Cole","What a Wonderful World - Louis Armstrong","L-O-V-E - Nat King Cole",
+    "White Winter Hymnal - Fleet Foxes","Ragged Wood - Fleet Foxes","I Will Follow You into the Dark - Death Cab for Cutie","Soul Meets Body - Death Cab for Cutie","Float On - Modest Mouse","Ocean Breathes Salty - Modest Mouse","Home - Edward Sharpe","Ho Hey - The Lumineers","Little Lion Man - Mumford & Sons","Pumped Up Kicks - Foster the People",
+    "32 Quarters - The Dusty 45s","Black - The Moondoggies","Night & Day - The Moondoggies",
+    "Don't Stop Believin' - Journey","Dancing Queen - ABBA","Mr. Brightside - The Killers","Africa - Toto","Sweet Caroline - Neil Diamond","Hey Ya! - Outkast","Dreams - Fleetwood Mac"
+  ]
+};
+// ================================================================================
+
+let gameCode = "", card = [], marks = [];
+
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+
+function joinGame(){
+  const c = document.getElementById("code").value.trim().toUpperCase();
+  if(!GAMES[c]){document.getElementById("err").textContent="Code not found. Check with your host.";return}
+  gameCode=c; loadOrBuild();
+  document.getElementById("join").style.display="none";
+  document.getElementById("board").style.display="block";
+}
+
+function loadOrBuild(){
+  const saved = localStorage.getItem("bb_"+gameCode);
+  if(saved){const s=JSON.parse(saved);card=s.card;marks=s.marks}
+  else newCard(true);
+  draw();
+}
+
+function newCard(skipDraw){
+  const songs = shuffle(GAMES[gameCode]).slice(0,24);
+  card = songs.slice(0,12).concat(["FREE"],songs.slice(12));
+  marks = card.map(s=>s==="FREE");
+  save(); if(!skipDraw) draw();
+}
+
+function save(){localStorage.setItem("bb_"+gameCode,JSON.stringify({card:card,marks:marks}))}
+
+function draw(){
+  const g=document.getElementById("grid"); g.innerHTML="";
+  card.forEach((s,i)=>{
+    const d=document.createElement("div");
+    d.className="cell"+(s==="FREE"?" free":"")+(marks[i]&&s!=="FREE"?" on":"");
+    d.textContent=s;
+    d.onclick=()=>{if(s==="FREE")return;marks[i]=!marks[i];save();draw()};
+    g.appendChild(d);
+  });
+}
+
+function hasBingo(){
+  const m=(r,c)=>marks[r*5+c];
+  for(let i=0;i<5;i++){
+    if([0,1,2,3,4].every(j=>m(i,j)))return true;
+    if([0,1,2,3,4].every(j=>m(j,i)))return true;
+  }
+  if([0,1,2,3,4].every(j=>m(j,j)))return true;
+  if([0,1,2,3,4].every(j=>m(j,4-j)))return true;
+  return false;
+}
+
+function callMingo(){
+  if(hasBingo()){document.getElementById("flash").style.display="flex"}
+  else alert("No bingo yet. Keep listening!");
+}
+</script>
+</body>
+</html>
