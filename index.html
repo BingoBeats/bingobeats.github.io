@@ -113,6 +113,7 @@ function callMingo(){
   if(hasBingo()){document.getElementById("flash").style.display="flex"}
   else alert("No bingo yet. Keep listening!");
 }
+  const urlCode=new URLSearchParams(location.search).get("g");if(urlCode){document.getElementById("code").value=urlCode;joinGame();}
 </script>
 </body>
 </html>
